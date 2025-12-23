@@ -8,9 +8,12 @@ PyTorch 2.1.0 + CUDA 12.1 + torchvision 0.16.0 + open3d 0.18.0
 
 ## train SFN model  
 move to the code repository (cd code), and run:  
+'''
 python train.py --log_dir SFN --data_root data/ --batch_size 32 --epoch 3000
+'''
 
-## test SFN model
+## test SFN model  
+'''
 python test.py --log_dir SFN --data_root data/
-
+'''
 
