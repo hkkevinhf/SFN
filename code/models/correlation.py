@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""
-@Author: Shi Qiu
-@Contact: shi.qiu@anu.edu.au
-@File: model.py
-@Time: 2021/01/06
-"""
 import os
 import sys
 import copy
@@ -80,9 +72,9 @@ class Mish(nn.Module):
                                         torch.exp(ctx) * (4 * ctx + 6)))/(2 * torch.exp(ctx) + torch.exp(2 * ctx) + 2)
         return input_grad
 
-class PnP3D(nn.Module):
+class GBCF(nn.Module):
     def __init__(self, input_features_dim, points_dim):
-        super(PnP3D, self).__init__()
+        super(GBCF, self).__init__()
 
         self.mish = Mish()
 

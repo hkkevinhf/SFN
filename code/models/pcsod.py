@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from pointnet2_utils import PointNetSetAbstraction, PointNetFeaturePropagation
 from mynet_utils import RFB, Upsample
 from vit import TransformerLayer
-from pnp3d import PnP3D
+from correlation import GBCF
 
 
 class get_model(nn.Module):
@@ -34,9 +34,9 @@ class get_model(nn.Module):
         self.TLayer3 = TransformerLayer(dim=256, heads=8, dim_head=64, mlp_dim=64)
         self.TLayer4 = TransformerLayer(dim=512, heads=8, dim_head=64, mlp_dim=64)
 
-        self.pnp3d_4 = PnP3D(512, 16)
-        self.pnp3d_3 = PnP3D(256, 64)
-        self.pnp3d_2 = PnP3D(256, 256)
+        self.gbcf_4 = GBCF(512, 16)
+        self.gbcf_3 = GBCF(256, 64)
+        self.gbcf_2 = GBCF(256, 256)
         #self.pnp3d_1 = PnP3D(128)
 
     def forward(self, xyz):   # xyz: B*9*4096
@@ -48,34 +48,24 @@ class get_model(nn.Module):
         l3_xyz, l3_points = self.sa3(l2_xyz, l2_points)
         l4_xyz, l4_points = self.sa4(l3_xyz, l3_points)   # B,3,16   B,512,16
 
-        '''
-        semantics = self.rfb1(l4_xyz, l4_points)   # B,512,16
-        semantics = self.deep_supervision(l0_xyz, l4_xyz, semantics)   # B,2,4096
-        semantics = semantics.transpose(2, 1).contiguous()
-        semantics = F.log_softmax(semantics, dim=-1)
-        semantics = semantics[..., -1:].transpose(2, 1).contiguous()
-        '''
-
-        l4_points = self.TLayer4(l4_points)   ######
-        l4_points = self.pnp3d_4(l4_points)   ######
+        l4_points = self.TLayer4(l4_points)   
+        l4_points = self.gbcf_4(l4_points)   
         l3_points = self.fp4(l3_xyz, l4_xyz, l3_points, l4_points)
 
-        l3_points = self.TLayer3(l3_points)   ######
-        l3_points = self.pnp3d_3(l3_points)   ######
+        l3_points = self.TLayer3(l3_points)   
+        l3_points = self.gbcf_3(l3_points)   
         l2_points = self.fp3(l2_xyz, l3_xyz, l2_points, l3_points)
 
-        l2_points = self.TLayer2(l2_points)   ######
-        l2_points = self.pnp3d_2(l2_points)   ######
+        l2_points = self.TLayer2(l2_points)   
+        l2_points = self.gbcf_2(l2_points)   
         l1_points = self.fp2(l1_xyz, l2_xyz, l1_points, l2_points)
 
         # multi_scale = self.rfb2(l1_xyz, l1_points)
-        #l1_points = self.pnp3d_1(l1_points)   ######
-
+        #l1_points = self.pnp3d_1(l1_points)   
 
         multi_scale = self.fp1(l0_xyz, l1_xyz, None, l1_points)
 
         enhanced_multi_scale = multi_scale
-        # enhanced_multi_scale = torch.cat((multi_scale, semantics), dim=1)
 
         enhanced_multi_scale = self.drop1(F.relu(self.bn1(self.conv1(enhanced_multi_scale))))
         pred = self.conv2(enhanced_multi_scale)   # pred: B*2*4096
